@@ -11,19 +11,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Clock, FileText, MapPin, Plus, Shield } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-
-interface Incident {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  date: string;
-  type: "harassment" | "suspicious" | "theft" | "other";
-}
+import { getIncidents, addIncident, Incident } from "@/services/incidentService";
+import { isAuthenticated } from "@/lib/supabase";
 
 const IncidentReports = () => {
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newIncident, setNewIncident] = useState({
     title: "",
     description: "",
@@ -32,50 +26,29 @@ const IncidentReports = () => {
   });
   
   useEffect(() => {
-    // Check authentication
-    const authToken = localStorage.getItem("vamika-auth-token");
-    
-    if (!authToken) {
-      navigate("/auth");
-      return;
-    }
-    
-    // Load saved incidents from localStorage
-    const savedIncidents = localStorage.getItem("vamika-incidents");
-    
-    if (savedIncidents) {
-      try {
-        setIncidents(JSON.parse(savedIncidents));
-      } catch (error) {
-        console.error("Failed to parse incidents:", error);
-      }
-    } else {
-      // Example data
-      const exampleIncidents: Incident[] = [
-        {
-          id: "1",
-          title: "Verbal harassment near subway",
-          description: "Someone was making inappropriate comments to women exiting the subway station.",
-          location: "Central Metro Station",
-          date: "2023-04-03T14:30:00",
-          type: "harassment"
-        },
-        {
-          id: "2",
-          title: "Suspicious individual following people",
-          description: "A person in a dark jacket was following women in the park area for extended periods.",
-          location: "Riverside Park",
-          date: "2023-04-01T19:15:00",
-          type: "suspicious"
-        }
-      ];
+    const checkAuth = async () => {
+      const authenticated = await isAuthenticated();
       
-      setIncidents(exampleIncidents);
-      localStorage.setItem("vamika-incidents", JSON.stringify(exampleIncidents));
-    }
+      if (!authenticated) {
+        navigate("/auth");
+        return;
+      }
+      
+      // Load incidents from Supabase
+      loadIncidents();
+    };
+    
+    checkAuth();
   }, [navigate]);
   
-  const handleAddIncident = () => {
+  const loadIncidents = async () => {
+    setLoading(true);
+    const incidentData = await getIncidents();
+    setIncidents(incidentData);
+    setLoading(false);
+  };
+  
+  const handleAddIncident = async () => {
     if (!newIncident.title || !newIncident.location) {
       toast({
         title: "Missing information",
@@ -85,28 +58,23 @@ const IncidentReports = () => {
       return;
     }
     
-    const newIncidentWithId: Incident = {
+    const success = await addIncident({
       ...newIncident,
-      id: Date.now().toString(),
       date: new Date().toISOString()
-    };
-    
-    const updatedIncidents = [newIncidentWithId, ...incidents];
-    setIncidents(updatedIncidents);
-    localStorage.setItem("vamika-incidents", JSON.stringify(updatedIncidents));
-    
-    // Reset form
-    setNewIncident({
-      title: "",
-      description: "",
-      location: "",
-      type: "harassment"
     });
     
-    toast({
-      title: "Report submitted",
-      description: "Thank you for helping keep the community safe."
-    });
+    if (success) {
+      // Reset form
+      setNewIncident({
+        title: "",
+        description: "",
+        location: "",
+        type: "harassment"
+      });
+      
+      // Reload incidents
+      await loadIncidents();
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -217,7 +185,13 @@ const IncidentReports = () => {
       </header>
       
       <main className="p-4 space-y-4">
-        {incidents.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-pulse text-center">
+              <p className="text-muted-foreground">Loading reports...</p>
+            </div>
+          </div>
+        ) : incidents.length === 0 ? (
           <div className="text-center py-12 card-highlight">
             <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">No incident reports yet</p>
@@ -248,6 +222,9 @@ const IncidentReports = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm">{incident.description || "No additional details provided."}</p>
+                  {incident.user_name && (
+                    <p className="text-xs text-muted-foreground mt-2">Reported by: {incident.user_name}</p>
+                  )}
                 </CardContent>
                 <CardFooter className="pt-0">
                   <div className="text-xs text-muted-foreground flex items-center">

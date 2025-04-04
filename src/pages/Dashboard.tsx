@@ -9,12 +9,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
-
-interface User {
-  name: string;
-  email: string;
-  phone: string;
-}
+import { getCurrentUser, signOut, UserProfile as IUserProfile } from "@/services/authService";
+import { isAuthenticated } from "@/lib/supabase";
 
 interface SafetyAlert {
   id: string;
@@ -26,7 +22,7 @@ interface SafetyAlert {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<IUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   
   const safetyAlerts: SafetyAlert[] = [
@@ -47,32 +43,42 @@ const Dashboard = () => {
   ];
   
   useEffect(() => {
-    // Check authentication
-    const authToken = localStorage.getItem("vamika-auth-token");
-    const userData = localStorage.getItem("vamika-user");
+    const checkAuthAndLoadProfile = async () => {
+      const authenticated = await isAuthenticated();
+      
+      if (!authenticated) {
+        navigate("/auth");
+        return;
+      }
+      
+      // Load user profile
+      const userProfile = await getCurrentUser();
+      
+      if (!userProfile) {
+        // Handle case where we're authenticated but can't get profile
+        toast({
+          title: "Error loading profile",
+          description: "Please log in again",
+          variant: "destructive",
+        });
+        signOut();
+        navigate("/auth");
+        return;
+      }
+      
+      setUser(userProfile);
+      setLoading(false);
+    };
     
-    if (!authToken || !userData) {
-      navigate("/auth");
-      return;
-    }
-    
-    try {
-      setUser(JSON.parse(userData));
-    } catch (error) {
-      console.error("Failed to parse user data:", error);
-      navigate("/auth");
-    }
-    
-    setLoading(false);
+    checkAuthAndLoadProfile();
   }, [navigate]);
   
-  const handleLogout = () => {
-    localStorage.removeItem("vamika-auth-token");
-    localStorage.removeItem("vamika-user");
-    toast({
-      title: "Logged out successfully",
-    });
-    navigate("/auth");
+  const handleLogout = async () => {
+    const success = await signOut();
+    
+    if (success) {
+      navigate("/auth");
+    }
   };
   
   if (loading || !user) {
@@ -96,6 +102,7 @@ const Dashboard = () => {
           name={user.name}
           email={user.email}
           phone={user.phone}
+          avatar={user.avatar_url}
         />
         
         <div className="flex justify-center my-8">

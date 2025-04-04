@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Eye, EyeOff, Shield } from "lucide-react";
+import { signIn, signUp, SignInCredentials, SignUpCredentials } from "@/services/authService";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -25,34 +27,47 @@ const AuthScreen = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!loginEmail || !loginPassword) {
+      toast({
+        title: "Missing information",
+        description: "Please provide your email and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // Mock successful login
-      localStorage.setItem("vamika-auth-token", "mock-token");
-      localStorage.setItem("vamika-user", JSON.stringify({
-        name: "Jane Doe",
-        email: loginEmail,
-        phone: "+1234567890"
-      }));
-      
-      setLoading(false);
-      toast({
-        title: "Logged in successfully",
-        description: "Welcome back to Vamika!",
-      });
-      
+    const credentials: SignInCredentials = {
+      email: loginEmail,
+      password: loginPassword
+    };
+    
+    const success = await signIn(credentials);
+    
+    if (success) {
       navigate("/dashboard");
-    }, 1000);
+    }
+    
+    setLoading(false);
   };
   
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Form validation
+    if (!name || !email || !phone || !password) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (password !== confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -62,26 +77,31 @@ const AuthScreen = () => {
       return;
     }
     
+    if (password.length < 8) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // Mock successful signup
-      localStorage.setItem("vamika-auth-token", "mock-token");
-      localStorage.setItem("vamika-user", JSON.stringify({
-        name,
-        email,
-        phone
-      }));
-      
-      setLoading(false);
-      toast({
-        title: "Account created successfully",
-        description: "Welcome to Vamika!",
-      });
-      
+    const credentials: SignUpCredentials = {
+      name,
+      email,
+      password,
+      phone
+    };
+    
+    const success = await signUp(credentials);
+    
+    if (success) {
       navigate("/dashboard");
-    }, 1500);
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -94,7 +114,10 @@ const AuthScreen = () => {
       
       <Card className="w-full max-w-md animate-fade-in">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
+            <ThemeToggle />
+          </div>
           <CardDescription>Login or create an account to continue</CardDescription>
         </CardHeader>
         <CardContent>
