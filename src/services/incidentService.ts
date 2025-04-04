@@ -1,11 +1,12 @@
 
 import { supabase, handleSupabaseError } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
+import { Database } from '@/integrations/supabase/types';
 
 export interface Incident {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   location: string;
   date: string;
   type: "harassment" | "suspicious" | "theft" | "other";

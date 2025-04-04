@@ -1,6 +1,7 @@
 
 import { supabase, handleSupabaseError } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
+import { Database } from '@/integrations/supabase/types';
 
 export interface SignUpCredentials {
   email: string;
@@ -16,10 +17,10 @@ export interface SignInCredentials {
 
 export interface UserProfile {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar_url?: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar_url?: string | null;
 }
 
 // Sign up a new user
