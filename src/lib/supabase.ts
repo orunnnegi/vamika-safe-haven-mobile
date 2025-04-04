@@ -2,12 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { toast } from '@/components/ui/use-toast';
 
-// Supabase configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Import the configured Supabase client
+import { supabase as configuredSupabase } from '@/integrations/supabase/client';
 
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Re-export the configured client
+export const supabase = configuredSupabase;
 
 // Error handling helper
 export const handleSupabaseError = (error: Error | null) => {

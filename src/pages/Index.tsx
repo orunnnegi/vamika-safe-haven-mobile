@@ -1,7 +1,7 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -9,8 +9,8 @@ const Index = () => {
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
       try {
-        const authenticated = await isAuthenticated();
-        navigate(authenticated ? "/dashboard" : "/");
+        const { data: { session } } = await supabase.auth.getSession();
+        navigate(session ? "/dashboard" : "/");
       } catch (error) {
         console.error("Auth check failed:", error);
         navigate("/");
